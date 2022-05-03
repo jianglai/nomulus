@@ -35,13 +35,13 @@ gcs_prefix="gcs://domain-registry-maven-repository"
 # steps). If left at their default location, the caches will be lost after
 # each step.
 # Note: must be consistent with value in ./cloudbuild-nomulus.yaml
-export GRADLE_USER_HOME="./cloudbuild-caches"
+echo GRADLE_USER_HOME $GRADLE_USER_HOME
 
 if [ "${environment}" == tool ]
 then
   mkdir -p "${dest}"
 
-  ./gradlew clean :core:buildToolImage \
+  ./gradlew :core:buildToolImage \
     -PmavenUrl="${gcs_prefix}"/maven \
     -PpluginsUrl="${gcs_prefix}"/plugins
 
@@ -50,7 +50,7 @@ else
   dest="${dest}/$1"
   mkdir -p "${dest}"
 
-  ./gradlew clean stage -Penvironment="${environment}" \
+  ./gradlew stage -Penvironment="${environment}" \
     -PmavenUrl="${gcs_prefix}"/maven \
     -PpluginsUrl="${gcs_prefix}"/plugins
 
