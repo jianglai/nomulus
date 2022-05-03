@@ -41,7 +41,7 @@ if [ "${environment}" == tool ]
 then
   mkdir -p "${dest}"
 
-  ./gradlew clean :core:buildToolImage \
+  ./gradlew :core:buildToolImage \
     -PmavenUrl="${gcs_prefix}"/maven \
     -PpluginsUrl="${gcs_prefix}"/plugins
 
@@ -50,7 +50,7 @@ else
   dest="${dest}/$1"
   mkdir -p "${dest}"
 
-  ./gradlew clean stage -Penvironment="${environment}" \
+  ./gradlew stage -Penvironment="${environment}" \
     -PmavenUrl="${gcs_prefix}"/maven \
     -PpluginsUrl="${gcs_prefix}"/plugins
 
