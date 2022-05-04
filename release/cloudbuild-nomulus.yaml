@@ -76,6 +76,7 @@ steps:
     for _env in alpha crash sandbox  production
     do
       release/build_nomulus_for_env.sh $${_env} output
+    done
 # Build and stage Dataflow Flex templates.
 - name: 'gcr.io/${PROJECT_ID}/builder:latest'
   entrypoint: /bin/bash
