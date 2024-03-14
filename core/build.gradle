@@ -197,7 +197,7 @@ dependencies {
   testRuntimeOnly deps['io.github.java-diff-utils:java-diff-utils']
   testImplementation deps['javax.annotation:javax.annotation-api']
   testImplementation deps['javax.annotation:jsr250-api']
-  implementation deps['javax.mail:mail']
+  implementation deps['jakarta.mail:jakarta.mail-api']
   implementation deps['javax.inject:javax.inject']
   implementation deps['javax.persistence:javax.persistence-api']
   implementation deps['javax.servlet:servlet-api']

@@ -35,7 +35,7 @@ dependencies {
   implementation deps['com.ibm.icu:icu4j']
   implementation deps['commons-codec:commons-codec']
   implementation deps['javax.inject:javax.inject']
-  implementation deps['javax.mail:mail']
+  implementation deps['jakarta.mail:jakarta.mail-api']
   implementation deps['javax.xml.bind:jaxb-api']
   implementation deps['joda-time:joda-time']
   implementation deps['org.bouncycastle:bcpkix-jdk18on']
