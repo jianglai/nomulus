@@ -37,8 +37,8 @@ import google.registry.persistence.transaction.JpaTestExtensions.JpaIntegrationW
 import google.registry.request.Response;
 import google.registry.testing.FakeClock;
 import google.registry.util.EmailMessage;
+import jakarta.mail.internet.InternetAddress;
 import java.util.concurrent.Callable;
-import javax.mail.internet.InternetAddress;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -198,6 +198,7 @@ dependencies {
   testImplementation deps['javax.annotation:javax.annotation-api']
   testImplementation deps['javax.annotation:jsr250-api']
   implementation deps['jakarta.mail:jakarta.mail-api']
+  runtimeOnly deps['org.eclipse.angus:jakarta.mail']
   implementation deps['javax.inject:javax.inject']
   implementation deps['javax.persistence:javax.persistence-api']
   implementation deps['javax.servlet:servlet-api']
