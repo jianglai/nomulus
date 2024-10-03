@@ -19,7 +19,7 @@ apt-get upgrade -y
 
 apt-get install locales -y
 locale-gen en_US.UTF-8
-apt-get install apt-utils gnupg curl lsb-release -y
+apt-get install apt-utils gnupg2 curl lsb-release -y
 
 # Set up Google Cloud SDK repo
 # Cribbed from https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu
@@ -35,18 +35,11 @@ echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" 
 
 apt-get update -y
 
-# Install GPG2 (in case it was not included)
-apt-get install gnupg2 -y
-
 # Install Java
 apt-get install openjdk-21-jdk-headless -y
 
 # Install Python
 apt-get install python3 -y
-# As of March 2021 python3 is at v3.6. Get pip then install dataclasses
-# (introduced in 3.7) for nom_build
-apt-get install python3-pip -y
-python3 -m pip install dataclasses
 
 # Install Node
 apt-get install npm -y
@@ -54,7 +47,7 @@ npm cache clean -f
 npm install -g n
 # Retrying because fails are possible for node.js intallation. See
 # https://github.com/nodejs/build/issues/1993
-for i in {1..5}; do n 22.7.0 && break || sleep 15; done
+for i in {1..5}; do n lts && break || sleep 15; done
 
 # Install gp_dump
 apt-get install postgresql-client-11 procps -y
