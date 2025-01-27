@@ -18,6 +18,23 @@ steps:
          '-PmavenUrl=gcs://domain-registry-maven-repository/maven',
          '-PpluginsUrl=gcs://domain-registry-maven-repository/plugins'
   ]
+# Build Nomulus and proxy image.
+- name: 'gcr.io/${PROJECT_ID}/builder:latest'
+  # Set home for Gradle caches. Must be consistent with last step below
+  # and ./build_nomulus_for_env.sh
+  env: [ 'GRADLE_USER_HOME=/workspace/cloudbuild-caches' ]
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - |
+    ./gradlew :jetty:buildNomulusImage :proxy:buildProxyImage \
+      -PmavenUrl=gcs://domain-registry-maven-repository/maven \
+      -PpluginsUrl=gcs://domain-registry-maven-repository/plugins
+    docker tag nomulus gcr.io/{$PROJECT_ID}/nomulus:${TAG_NAME}
+    docker tag proxy gcr.io/{$PROJECT_ID}/proxy:${TAG_NAME}
+  images:
+    - 'gcr.io/${PROJECT_ID}/nomulus:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/proxy:${TAG_NAME}'
 # Build and package the deployment files for each environment, and the tool
 # binary and image.
 - name: 'gcr.io/${PROJECT_ID}/builder:latest'
