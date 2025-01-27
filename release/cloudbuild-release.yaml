@@ -57,28 +57,19 @@ steps:
     docker pull eclipse-temurin:21
     docker tag eclipse-temurin:21 gcr.io/${PROJECT_ID}/temurin:${TAG_NAME}
     docker tag eclipse-temurin:21 gcr.io/${PROJECT_ID}/temurin:latest
-    docker push gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
-    docker push gcr.io/${PROJECT_ID}/builder:latest
-    docker push gcr.io/${PROJECT_ID}/jetty:${TAG_NAME}
-    docker push gcr.io/${PROJECT_ID}/jetty:latest
-    docker push gcr.io/${PROJECT_ID}/temurin:${TAG_NAME}
-    docker push gcr.io/${PROJECT_ID}/temurin:latest
   dir: 'release/builder/'
 # Do text replacement in the merged repo, hardcoding image digests.
-- name: 'gcr.io/cloud-builders/gcloud'
+- name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
   - -c
   - |
     set -e
-    builder_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/builder \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    jetty_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/jetty \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    temurin_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/temurin \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    sed -i s%eclipse-temurin:21%${PROJECT_ID}/temurin@$temurin_digest% proxy/Dockerfile
-    sed -i s%jetty:12-jdk21%${PROJECT_ID}/jetty@$jetty_digest% jetty/Dockerfile
+    builder_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/builder)
+    jetty_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/jetty)
+    temurin_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/temurin)
+    sed -i s%eclipse-temurin:21%gcr.io/${PROJECT_ID}/temurin@$temurin_digest% proxy/Dockerfile
+    sed -i s%jetty:12-jdk21%gcr.io/${PROJECT_ID}/jetty@$jetty_digest% jetty/Dockerfile
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-proxy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-nomulus.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-deploy.yaml
@@ -96,7 +87,7 @@ steps:
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-delete.yaml \
         > release/cloudbuild-delete-${environment}.yaml
     done
-# Build the schema_deployer image and upload it to GCR.
+# Build the schema_deployer image.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
@@ -106,10 +97,8 @@ steps:
     docker build -t gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME} --build-arg TAG_NAME=${TAG_NAME} --build-arg PROJECT_ID=${PROJECT_ID} .
     docker tag gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME} \
       gcr.io/${PROJECT_ID}/schema_deployer:latest
-    docker push gcr.io/${PROJECT_ID}/schema_deployer:latest
-    docker push gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME}
   dir: 'release/schema-deployer/'
-# Build the schema_verifier image and upload it to GCR.
+# Build the schema_verifier image.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
@@ -119,33 +108,17 @@ steps:
     docker build -t gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME} --build-arg TAG_NAME=${TAG_NAME} --build-arg PROJECT_ID=${PROJECT_ID} .
     docker tag gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME} \
       gcr.io/${PROJECT_ID}/schema_verifier:latest
-    docker push gcr.io/${PROJECT_ID}/schema_verifier:latest
-    docker push gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME}
   dir: 'release/schema-verifier/'
 # Do text replacement in the cloud build YAML files.
-- name: 'gcr.io/cloud-builders/gcloud'
+- name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
   - -c
   - |
     set -e
-    builder_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/builder \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    schema_deployer_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/schema_deployer \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    schema_verifier_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/schema_verifier \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    prober_cert_updater_digest=$( \
-      gcloud container images list-tags \
-      gcr.io/${PROJECT_ID}/prober_cert_updater \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-     db_object_updater_digest=$( \
-      gcloud container images list-tags \
-      gcr.io/${PROJECT_ID}/db_object_updater \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
+    builder_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/builder)
+    schema_deployer_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/schema_deployer)
+    schema_verifier=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/schema_verifier)
     sed -i s/builder:latest/builder@$builder_digest/g \
       release/cloudbuild-schema-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g \
@@ -159,6 +132,10 @@ steps:
     sed -i s/schema_verifier:latest/schema_verifier@$schema_verifier_digest/g \
       release/cloudbuild-schema-verify.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-schema-deploy.yaml
+    # It would have been better to use digests below, but these two images depend on building
+    # nomulus itself and the digest is not available at this point. Therefore, we settle for tags.
+    sed -i s/db_object_updater:latest/db_object_updater:${TAG_NAME}/g \
+      release/cloudbuild-sync-db-objects.yaml
     for environment in alpha crash qa sandbox production; do
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-schema-deploy.yaml \
         > release/cloudbuild-schema-deploy-${environment}.yaml
@@ -255,6 +232,17 @@ steps:
     git push -o nokeycheck origin master 
     git tag ${TAG_NAME}
     git push -o nokeycheck origin ${TAG_NAME}
+- images:
+    - 'gcr.io/${PROJECT_ID}/builder:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/builder:latest'
+    - 'gcr.io/${PROJECT_ID}/jetty:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/jetty:latest'
+    - 'gcr.io/${PROJECT_ID}/temurin:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/temurin:latest'
+    - 'gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/schema_deployer:latest'
+    - 'gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME}'
+    - 'gcr.io/${PROJECT_ID}/schema_verifier:latest'
 timeout: 3600s
 options:
   machineType: 'E2_HIGHCPU_32'
