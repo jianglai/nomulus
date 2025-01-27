@@ -7,7 +7,7 @@
 #
 # This pipeline prepares a release. The pipeline should be run against the Nomulus public repo on
 # GitHub. It builds the builder and base images, and hard codes the sha256 hashes of the resulting
-# images in the merged code base (internal + public) , which is tagged and pushed into the release
+# images in the merged code base (internal + public), which is tagged and pushed into the release
 # repo. Actual release artifacts are built from the release repo, ensuring reproducibility.
 steps:
 # Check the out internal repo.
@@ -42,58 +42,58 @@ steps:
     rm -rf .git && rm -rf nomulus-internal/.git
     cp -rf nomulus-internal/* .
     rm -rf nomulus-internal
-# Build the builder image and tag the proxy base image, then upload them to GCR.
+# Build the builder image and pull the base images.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
   - -c
   - |
     set -e
-    docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
-    docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
-    docker pull gcr.io/distroless/java
-    docker tag gcr.io/distroless/java gcr.io/${PROJECT_ID}/base:${TAG_NAME}
-    docker tag gcr.io/distroless/java gcr.io/${PROJECT_ID}/base:latest
-    docker pull gcr.io/distroless/java:debug
-    docker tag gcr.io/distroless/java:debug gcr.io/${PROJECT_ID}/base-debug:${TAG_NAME}
-    docker tag gcr.io/distroless/java:debug gcr.io/${PROJECT_ID}/base-debug:latest
-    docker push gcr.io/${PROJECT_ID}/builder:latest
-    docker push gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
-    docker push gcr.io/${PROJECT_ID}/base:latest
-    docker push gcr.io/${PROJECT_ID}/base:${TAG_NAME}
-    docker push gcr.io/${PROJECT_ID}/base-debug:latest
-    docker push gcr.io/${PROJECT_ID}/base-debug:${TAG_NAME}
+    #docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
+    # to delete start
+    docker pull gcr.io/${PROJECT_ID}/builder:latest
+    docker tag gcr.io/${PROJECT_ID}/builder:latest gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
+    # to delete end
+    #docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
+    docker pull jetty:12-jdk21
+    docker tag jetty:12-jdk21 gcr.io/${PROJECT_ID}/jetty:${TAG_NAME}
+    docker tag jetty:12-jdk21 gcr.io/${PROJECT_ID}/jetty:latest
+    docker pull eclipse-temurin:21
+    docker tag eclipse-temurin:21 gcr.io/${PROJECT_ID}/temurin:${TAG_NAME}
+    docker tag eclipse-temurin:21 gcr.io/${PROJECT_ID}/temurin:latest
   dir: 'release/builder/'
 # Do text replacement in the merged repo, hardcoding image digests.
-- name: 'gcr.io/cloud-builders/gcloud'
+- name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
   - -c
   - |
     set -e
-    builder_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/builder \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    base_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/base \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    debug_digest=$(gcloud container images list-tags gcr.io/${PROJECT_ID}/base-debug \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    sed -i s%distroless/java%${PROJECT_ID}/base@$base_digest% proxy/Dockerfile
-    sed -i s%distroless/java:debug%${PROJECT_ID}/base-debug@$debug_digest% core/Dockerfile
+    builder_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/builder)
+    jetty_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/jetty)
+    temurin_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/temurin)
+    echo "sed -i s%eclipse-temurin:21%gcr.io/${PROJECT_ID}/temurin@$temurin_digest%g proxy/Dockerfile"
+    sed -i s%eclipse-temurin:21%gcr.io/${PROJECT_ID}/temurin@$temurin_digest%g proxy/Dockerfile
+    sed -i s%eclipse-temurin:21%gcr.io/${PROJECT_ID}/temurin@$temurin_digest%g core/Dockerfile
+    sed -i s%jetty:12-jdk21%gcr.io/${PROJECT_ID}/jetty@$jetty_digest%g jetty/Dockerfile
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-proxy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-nomulus.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-sync.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-tag.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-deploy.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-verify.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-delete.yaml
     sed -i s/GCP_PROJECT/${PROJECT_ID}/ proxy/kubernetes/proxy-*.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-deploy.yaml
-    for environment in alpha crash sandbox production; do
+    for environment in alpha crash qa sandbox production; do
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-deploy.yaml \
         > release/cloudbuild-deploy-${environment}.yaml
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-delete.yaml \
         > release/cloudbuild-delete-${environment}.yaml
     done
-# Build the schema_deployer image and upload it to GCR.
+# Build the schema_deployer image.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
@@ -103,10 +103,8 @@ steps:
     docker build -t gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME} --build-arg TAG_NAME=${TAG_NAME} --build-arg PROJECT_ID=${PROJECT_ID} .
     docker tag gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME} \
       gcr.io/${PROJECT_ID}/schema_deployer:latest
-    docker push gcr.io/${PROJECT_ID}/schema_deployer:latest
-    docker push gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME}
   dir: 'release/schema-deployer/'
-# Build the schema_verifier image and upload it to GCR.
+# Build the schema_verifier image.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
@@ -116,34 +114,17 @@ steps:
     docker build -t gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME} --build-arg TAG_NAME=${TAG_NAME} --build-arg PROJECT_ID=${PROJECT_ID} .
     docker tag gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME} \
       gcr.io/${PROJECT_ID}/schema_verifier:latest
-    docker push gcr.io/${PROJECT_ID}/schema_verifier:latest
-    docker push gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME}
   dir: 'release/schema-verifier/'
-# Do text replacement in the schema-deploy, schema-verify and
-# prober_cert_updater configs.
-- name: 'gcr.io/cloud-builders/gcloud'
+# Do text replacement in the cloud build YAML files.
+- name: 'gcr.io/cloud-builders/docker'
   entrypoint: /bin/bash
   args:
   - -c
   - |
     set -e
-    builder_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/builder \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    schema_deployer_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/schema_deployer \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    schema_verifier_digest=$( \
-      gcloud container images list-tags gcr.io/${PROJECT_ID}/schema_verifier \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-    prober_cert_updater_digest=$( \
-      gcloud container images list-tags \
-      gcr.io/${PROJECT_ID}/prober_cert_updater \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
-     db_object_updater_digest=$( \
-      gcloud container images list-tags \
-      gcr.io/${PROJECT_ID}/db_object_updater \
-      --format='get(digest)' --filter='tags = ${TAG_NAME}')
+    builder_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/builder)
+    schema_deployer_digest=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/schema_deployer)
+    schema_verifier=$(docker images --no-trunc --quiet gcr.io/${PROJECT_ID}/schema_verifier)
     sed -i s/builder:latest/builder@$builder_digest/g \
       release/cloudbuild-schema-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g \
@@ -157,7 +138,7 @@ steps:
     sed -i s/schema_verifier:latest/schema_verifier@$schema_verifier_digest/g \
       release/cloudbuild-schema-verify.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-schema-deploy.yaml
-    for environment in alpha crash sandbox production; do
+    for environment in alpha crash qa sandbox production; do
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-schema-deploy.yaml \
         > release/cloudbuild-schema-deploy-${environment}.yaml
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-schema-verify.yaml \
@@ -167,7 +148,46 @@ steps:
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-sync-db-objects.yaml \
         > release/cloudbuild-sync-db-objects-${environment}.yaml
     done
-# Upload the gradle binary to GCS if it does not exist and point URL in gradle wrapper to it.
+# Do text replacement in the k8s manifests.
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - |
+    set -e
+    for env in alpha crash qa sandbox production
+    do
+      based_domain=$(grep baseDomain \
+        ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
+        awk '{print $2}')
+      for service in frontend backend pubapi console 
+      do
+        # non-canary
+        sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
+          sed s/ENVIRONMENT/${env}/g | \
+          sed s/PROXY_ENV/${env}/g | \
+          sed s/EPP/epp/g | \
+          sed s/WHOIS/whois/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+        # canary
+        sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
+          sed s/ENVIRONMENT/${env}/g | \
+          sed s/PROXY_ENV/${env}_canary/g | \
+          sed s/EPP/epp-canary/g | \
+          sed s/WHOIS/whois-canary/g | \
+          sed s/${service}/${service}-canary/g \
+          > ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
+        # gateway
+        sed s/BASE_DOMAIN/${base_domain}/g \
+          ./jetty/kubernetes/gateway/nomulus-route-${service}.yaml \
+          > ./jetty/kubernetes/gateway/nomulus-route-${env}-${service}.yaml
+        # IAP
+          sed s/SERVICE/${service}/g ./jetty/kubernetes/gateway/nomulus-iap-${env}.yaml \
+            > ./jetty/kubernetes/gateway/nomulus-iap-${env}-${service}.yaml
+          sed s/SERVICE/${service}-canary/g ./jetty/kubernetes/gateway/nomulus-iap-${env}.yaml \
+            > ./jetty/kubernetes/gateway/nomulus-iap-${env}-${service}-canary.yaml
+      done
+    done
+# Upload the Gradle binary to GCS if it does not exist and point URL in Gradle wrapper to it.
 - name: 'gcr.io/cloud-builders/gsutil'
   entrypoint: /bin/bash
   args:
@@ -214,6 +234,17 @@ steps:
     git push -o nokeycheck origin master 
     git tag ${TAG_NAME}
     git push -o nokeycheck origin ${TAG_NAME}
+images:
+  - 'gcr.io/${PROJECT_ID}/builder:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/builder:latest'
+  - 'gcr.io/${PROJECT_ID}/jetty:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/jetty:latest'
+  - 'gcr.io/${PROJECT_ID}/temurin:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/temurin:latest'
+  - 'gcr.io/${PROJECT_ID}/schema_deployer:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/schema_deployer:latest'
+  - 'gcr.io/${PROJECT_ID}/schema_verifier:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/schema_verifier:latest'
 timeout: 3600s
 options:
   machineType: 'E2_HIGHCPU_32'
