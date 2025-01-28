@@ -223,6 +223,12 @@ artifacts:
     - 'release/cloudbuild-schema-deploy-*.yaml'
     - 'release/cloudbuild-schema-verify-*.yaml'
     - 'release/cloudbuild-sync-db-objects-*.yaml'
+    - 'jetty/kubernetes/*.yaml'
+# The images are already uploaded, but we still need to include them there so that
+# the GCB pubsub message contains them (for Spinnaker to consume).
+images:
+  - 'gcr.io/${PROJECT_ID}/nomulus:${TAG_NAME}'
+  - 'gcr.io/${PROJECT_ID}/proxy:${TAG_NAME}'
 timeout: 7200s
 options:
   machineType: 'E2_HIGHCPU_32'
