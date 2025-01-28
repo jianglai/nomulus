@@ -223,6 +223,7 @@ artifacts:
     - 'release/cloudbuild-schema-deploy-*.yaml'
     - 'release/cloudbuild-schema-verify-*.yaml'
     - 'release/cloudbuild-sync-db-objects-*.yaml'
+    - 'jetty/kubernetes/*.yaml'
 timeout: 7200s
 options:
   machineType: 'E2_HIGHCPU_32'
