@@ -168,7 +168,7 @@ steps:
     set -e
     for env in alpha crash qa sandbox production
     do
-      based_domain=$(grep baseDomain \
+      base_domain=$(grep baseDomain \
         ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
         awk '{print $2}')
       for service in frontend backend pubapi console 
