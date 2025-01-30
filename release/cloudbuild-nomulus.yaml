@@ -224,6 +224,7 @@ artifacts:
     - 'release/cloudbuild-schema-verify-*.yaml'
     - 'release/cloudbuild-sync-db-objects-*.yaml'
     - 'jetty/kubernetes/*.yaml'
+    - 'jetty/kubernetes/gateway/*.yaml'
 # The images are already uploaded, but we still need to include them there so that
 # the GCB pubsub message contains them (for Spinnaker to consume).
 images:
