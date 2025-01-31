@@ -43,8 +43,6 @@ steps:
       --keyversion-project=${PROJECT_ID} --keyversion-location=global \
       --keyversion-keyring=attestor-keys --keyversion-key=signing \
       --keyversion=1
-    sed -i s/'$${_IMAGE}'/proxy/g release/cloudbuild-tag.yaml
-    sed -i s/':$${TAG_NAME}'/@$digest/g release/cloudbuild-tag.yaml
 # Images to upload to GCR. Even though the image has already been uploaded, we still include it
 # here so that the GCB pubsub message contains it (for Spinnaker to consume).
 images: ['gcr.io/${PROJECT_ID}/proxy:${TAG_NAME}']
@@ -55,7 +53,6 @@ artifacts:
     # This cannot be regexs because of how Spinnaker constructs artifact paths.
     paths:
     - 'proxy/kubernetes/proxy-*.yaml'
-    - 'release/cloudbuild-tag.yaml'
 timeout: 3600s
 options:
   machineType: 'E2_HIGHCPU_32'
