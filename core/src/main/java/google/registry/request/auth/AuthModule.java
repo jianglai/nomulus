@@ -19,11 +19,13 @@ import static com.google.common.base.Suppliers.memoizeWithExpiration;
 import static com.google.common.net.HttpHeaders.AUTHORIZATION;
 import static google.registry.util.RegistryEnvironment.UNITTEST;
 
+import com.google.auth.oauth2.ComputeEngineCredentials;
 import com.google.cloud.compute.v1.BackendService;
 import com.google.cloud.compute.v1.BackendServicesClient;
 import com.google.cloud.compute.v1.BackendServicesSettings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.flogger.FluentLogger;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import dagger.Lazy;
@@ -67,6 +69,8 @@ public class AuthModule {
   // gkemcg1-default-console[-canary]-80-(some random string)
   private static final Pattern BACKEND_END_PATTERN =
       Pattern.compile(".*-default-((frontend|backend|console|pubapi)(-canary)?)-80-.*");
+
+  private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
   /** Provides the custom authentication mechanisms. */
   @Provides
@@ -150,6 +154,11 @@ public class AuthModule {
   static BackendServicesClient provideBackendServicesClients(
       @ApplicationDefaultCredential GoogleCredentialsBundle credentialsBundle) {
     try {
+      ComputeEngineCredentials credentials =
+          (ComputeEngineCredentials) credentialsBundle.getGoogleCredentials();
+      logger.atInfo().log(credentials.toString());
+      logger.atInfo().log(credentials.getAccount());
+      credentials.refreshAccessToken();
       return BackendServicesClient.create(
           BackendServicesSettings.newBuilder()
               .setCredentialsProvider(credentialsBundle::getGoogleCredentials)
