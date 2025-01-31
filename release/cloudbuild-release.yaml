@@ -49,8 +49,12 @@ steps:
   - -c
   - |
     set -e
-    docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
-    docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
+    #docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
+    # BEGIN
+    docker pull gcr.io/${PROJECT_ID}/builder:latest
+    docker tag gcr.io/${PROJECT_ID}/builder:latest gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
+    # END
+    #docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
     docker push gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
     docker push gcr.io/${PROJECT_ID}/builder:latest
     docker pull jetty:12-jdk21
@@ -168,6 +172,14 @@ steps:
     set -e
     for env in alpha crash qa sandbox production
     do
+      # This is the project where Nomulus runs, and we need it to correctly bind the k8s service
+      # account to the GCP service account.
+      if [ ${env} == production ]
+      then
+        project="domain-registry"
+      else
+        project="domain-registry-${env}"
+      fi
       base_domain=$(grep baseDomain \
         ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
         awk '{print $2}')
@@ -179,6 +191,11 @@ steps:
           sed s/PROXY_ENV/${env}/g | \
           sed s/EPP/epp/g | \
           sed s/WHOIS/whois/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+        if [ ${service} == frontend ]
+        then
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
+            ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+        fi
         # canary
         sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
           sed s/ENVIRONMENT/${env}/g | \
@@ -187,6 +204,11 @@ steps:
           sed s/WHOIS/whois-canary/g | \
           sed s/${service}/${service}-canary/g \
           > ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
+        if [ ${service} == frontend ]
+        then
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
+            ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
+        fi
         # gateway
         sed s/BASE_DOMAIN/${base_domain}/g \
           ./jetty/kubernetes/gateway/nomulus-route-${service}.yaml \
