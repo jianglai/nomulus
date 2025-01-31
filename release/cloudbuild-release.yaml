@@ -83,13 +83,12 @@ steps:
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-proxy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-nomulus.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-deploy.yaml
-    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-sync.yaml
-    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-tag.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-sync-and-tag.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-verify.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-delete.yaml
     sed -i s/GCP_PROJECT/${PROJECT_ID}/ proxy/kubernetes/proxy-*.yaml
-    sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync.yaml
+    sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync-and-tag.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-deploy.yaml
     for environment in alpha crash qa sandbox production; do
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-deploy.yaml \
@@ -154,10 +153,6 @@ steps:
         > release/cloudbuild-schema-deploy-${environment}.yaml
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-schema-verify.yaml \
         > release/cloudbuild-schema-verify-${environment}.yaml
-      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-renew-prober-certs.yaml \
-        > release/cloudbuild-renew-prober-certs-${environment}.yaml
-      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-sync-db-objects.yaml \
-        > release/cloudbuild-sync-db-objects-${environment}.yaml
     done
 # Do text replacement in the k8s manifests.
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -168,6 +163,14 @@ steps:
     set -e
     for env in alpha crash qa sandbox production
     do
+      # This is the project where Nomulus runs, and we need it to correctly bind the k8s service
+      # account to the GCP service account.
+      if [ ${env} == production ]
+      then
+        project="domain-registry"
+      else
+        project="domain-registry-${env}"
+      fi
       base_domain=$(grep baseDomain \
         ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
         awk '{print $2}')
@@ -179,6 +182,11 @@ steps:
           sed s/PROXY_ENV/${env}/g | \
           sed s/EPP/epp/g | \
           sed s/WHOIS/whois/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+        if [ ${service} == frontend ]
+        then
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
+            ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+        fi
         # canary
         sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
           sed s/ENVIRONMENT/${env}/g | \
@@ -187,6 +195,11 @@ steps:
           sed s/WHOIS/whois-canary/g | \
           sed s/${service}/${service}-canary/g \
           > ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
+        if [ ${service} == frontend ]
+        then
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
+            ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
+        fi
         # gateway
         sed s/BASE_DOMAIN/${base_domain}/g \
           ./jetty/kubernetes/gateway/nomulus-route-${service}.yaml \
