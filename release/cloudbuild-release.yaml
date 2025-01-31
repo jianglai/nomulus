@@ -176,9 +176,9 @@ steps:
       # account to the GCP service account.
       if [ ${env} == production ]
       then
-        HOSTING_PROJECT="domain-registry"
+        project="domain-registry"
       else
-        HOSTING_PROJECT="domain-registry-${env}"
+        project="domain-registry-${env}"
       fi
       base_domain=$(grep baseDomain \
         ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
@@ -193,7 +193,7 @@ steps:
           sed s/WHOIS/whois/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
         if [ ${service} == frontend ]
         then
-          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${HOSTING_PROJECT}.iam.gserviceaccount.com/g \
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
             ./jetty/kubernetes/nomulus-${env}-${service}.yaml
         fi
         # canary
@@ -206,7 +206,7 @@ steps:
           > ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
         if [ ${service} == frontend ]
         then
-          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${HOSTING_PROJECT}.iam.gserviceaccount.com/g \
+          sed -i s/${PROJECT_ID}.iam.gserviceaccount.com/${project}.iam.gserviceaccount.com/g \
             ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
         fi
         # gateway
