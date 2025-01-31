@@ -9,7 +9,7 @@
 # https://cloud.google.com/cloud-build/docs/running-builds/automate-builds
 steps:
 # Download Kythe
-- name: 'gcr.io/${PROJECT_ID}/builder:latest'
+- name: 'gcr.io/${PROJECT_ID}/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
@@ -20,7 +20,7 @@ steps:
     rm kythe-${_KYTHE_VERSION}.tar.gz
     mv kythe-${_KYTHE_VERSION} kythe
 # Build Nomulus with the Kythe wrapper
-- name: 'gcr.io/${PROJECT_ID}/builder:latest'
+- name: 'gcr.io/${PROJECT_ID}/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
@@ -44,7 +44,7 @@ steps:
     ./gradlew clean testClasses \
       -Dno_werror=true -PenableCrossReferencing=true
 # Merge kzip files
-- name: 'gcr.io/${PROJECT_ID}/builder:latest'
+- name: 'gcr.io/${PROJECT_ID}/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
@@ -53,13 +53,11 @@ steps:
     ./kythe/tools/kzip merge \
       --output $${KYTHE_OUTPUT_DIRECTORY}/merged/${COMMIT_SHA}.kzip \
       $${KYTHE_OUTPUT_DIRECTORY}/*.kzip
-
 artifacts:
   objects:
     location: 'gs://${PROJECT_ID}-codesearch'
     paths:
     - 'kythe_output/merged/${COMMIT_SHA}.kzip'
-
 timeout: 3600s
 options:
   machineType: 'E2_HIGHCPU_32'

@@ -43,7 +43,7 @@ steps:
 
     gcloud auth activate-service-account --key-file=tool-credential.json
 
-    for service in default pubapi backend bsa tools
+    for service in default pubapi backend bsa tools console
     do
       for version in $(gcloud app versions list \
         --filter="SERVICE:$service AND SERVING_STATUS:STOPPED" \
