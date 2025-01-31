@@ -89,11 +89,13 @@ steps:
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-sync.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-tag.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-sync-and-tag.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-verify.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-delete.yaml
     sed -i s/GCP_PROJECT/${PROJECT_ID}/ proxy/kubernetes/proxy-*.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync.yaml
+    sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync-and-tag.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-deploy.yaml
     for environment in alpha crash qa sandbox production; do
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-deploy.yaml \
@@ -158,10 +160,6 @@ steps:
         > release/cloudbuild-schema-deploy-${environment}.yaml
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-schema-verify.yaml \
         > release/cloudbuild-schema-verify-${environment}.yaml
-      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-renew-prober-certs.yaml \
-        > release/cloudbuild-renew-prober-certs-${environment}.yaml
-      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-sync-db-objects.yaml \
-        > release/cloudbuild-sync-db-objects-${environment}.yaml
     done
 # Do text replacement in the k8s manifests.
 - name: 'gcr.io/cloud-builders/gcloud'

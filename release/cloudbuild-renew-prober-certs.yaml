@@ -21,7 +21,7 @@
 # Please refer to ./cloudbuild-release.yaml for more details.
 steps:
 # Generate new SSL certs
-- name: 'gcr.io/$PROJECT_ID/builder:latest'
+- name: 'gcr.io/$PROJECT_ID/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
@@ -46,7 +46,7 @@ steps:
       -password file:./passphrase.txt
 # Download the nomulus-tools credential, which has the privilege to invoke tools
 # commands. Also download the list of probers.
-- name: 'gcr.io/$PROJECT_ID/builder:latest'
+- name: 'gcr.io/$PROJECT_ID/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
@@ -63,7 +63,7 @@ steps:
       > nomulus_tool_credential.json
 # Install the new pem cert in the Nomulus server. After this step, both the
 # current cert and the new cert are accepted for login by the server.
-- name: 'gcr.io/$PROJECT_ID/prober_cert_updater:latest'
+- name: 'gcr.io/$PROJECT_ID/prober_cert_updater:live'
   args:
   - ${_ENV}
   - ./prober-client-tls.pem
@@ -71,7 +71,7 @@ steps:
   - ./nomulus_tool_credential.json
 # Add the p12 cert to SecretManager. Prober instances will start using this
 # cert when they restart.
-- name: 'gcr.io/$PROJECT_ID/builder:latest'
+- name: 'gcr.io/$PROJECT_ID/builder:live'
   entrypoint: /bin/bash
   args:
   - -c
