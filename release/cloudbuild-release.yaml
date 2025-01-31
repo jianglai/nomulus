@@ -49,8 +49,12 @@ steps:
   - -c
   - |
     set -e
-    docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
-    docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
+    #docker build -t gcr.io/${PROJECT_ID}/builder:${TAG_NAME} .
+    # BEGIN
+    docker pull gcr.io/${PROJECT_ID}/builder:latest
+    docker tag gcr.io/${PROJECT_ID}/builder:latest gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
+    # END
+    #docker tag gcr.io/${PROJECT_ID}/builder:${TAG_NAME} gcr.io/${PROJECT_ID}/builder:latest
     docker push gcr.io/${PROJECT_ID}/builder:${TAG_NAME}
     docker push gcr.io/${PROJECT_ID}/builder:latest
     docker pull jetty:12-jdk21

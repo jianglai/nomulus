@@ -18,7 +18,10 @@ import static google.registry.request.Action.Method.GET;
 import static google.registry.request.Action.Method.POST;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.auth.oauth2.ComputeEngineCredentials;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.flogger.FluentLogger;
+import google.registry.config.CredentialModule.ApplicationDefaultCredential;
 import google.registry.request.Action;
 import google.registry.request.Action.GaeService;
 import google.registry.request.Parameter;
@@ -26,6 +29,7 @@ import google.registry.request.Response;
 import google.registry.request.UrlConnectionService;
 import google.registry.request.UrlConnectionUtils;
 import google.registry.request.auth.Auth;
+import google.registry.util.GoogleCredentialsBundle;
 import java.net.URL;
 import javax.inject.Inject;
 import javax.net.ssl.HttpsURLConnection;
@@ -51,39 +55,23 @@ import javax.net.ssl.HttpsURLConnection;
 public class CannedScriptExecutionAction implements Runnable {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  @Inject UrlConnectionService urlConnectionService;
   @Inject Response response;
-
-  @Inject
-  @Parameter("url")
-  String url;
+  @Inject @ApplicationDefaultCredential GoogleCredentialsBundle credentialsBundle;
 
   @Inject
   CannedScriptExecutionAction() {}
 
   @Override
   public void run() {
-    Integer responseCode = null;
-    String responseContent = null;
     try {
-      logger.atInfo().log("Connecting to: %s", url);
-      HttpsURLConnection connection =
-          (HttpsURLConnection) urlConnectionService.createConnection(new URL(url));
-      responseCode = connection.getResponseCode();
-      logger.atInfo().log("Code: %d", responseCode);
-      logger.atInfo().log("Headers: %s", connection.getHeaderFields());
-      responseContent = new String(UrlConnectionUtils.getResponseBytes(connection), UTF_8);
-      logger.atInfo().log("Response: %s", responseContent);
+      ComputeEngineCredentials credentials =
+          (ComputeEngineCredentials) credentialsBundle.getGoogleCredentials();
+      logger.atInfo().log(credentials.toString());
+      logger.atInfo().log(credentials.getAccount());
+      credentialsBundle.getGoogleCredentials().refreshAccessToken();
+
     } catch (Exception e) {
-      logger.atWarning().withCause(e).log("Connection to %s failed", url);
-      throw new RuntimeException(e);
-    } finally {
-      if (responseCode != null) {
-        response.setStatus(responseCode);
-      }
-      if (responseContent != null) {
-        response.setPayload(responseContent);
-      }
+      logger.atSevere().withCause(e).log("Failed to refresh access token");
     }
   }
 }
