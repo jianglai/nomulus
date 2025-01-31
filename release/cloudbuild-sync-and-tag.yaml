@@ -1,0 +1,102 @@
+# This pipeline syncs the folder gs://[PROJECT_ID]-deploy/[TAG] to gs://[PROJECT_ID]-deploy/live.
+# It also adds a "live" tag to various images in gcr.io/[PROJECT_ID]/[IMAGE]:[TAG].
+# The PROJECT_ID is the current project name that gcloud uses.
+#
+# To manually trigger a build on GCB, run:
+# gcloud builds submit --config cloudbuild-sync-and-tag.yaml --substitutions TAG_NAME=[TAG] ..
+#
+# To trigger a build automatically, follow the instructions below and add a trigger:
+# https://cloud.google.com/cloud-build/docs/running-builds/automate-builds
+#
+# Note: to work around issue in Spinnaker's 'Deployment Manifest' stage,
+# variable references must avoid the ${var} format. Valid formats include
+# $var or ${"${var}"}. This file use the former. Since TAG_NAME is
+# expanded in the copies sent to Spinnaker, we preserve the brackets around
+# them for safe pattern matching during release.
+# See https://github.com/spinnaker/spinnaker/issues/3028 for more information.
+steps:
+# Rsync the folder where deployment artifacts are uploaded.
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gsutil
+  - -m
+  - rsync
+  - -d
+  - -r
+  - gs://$PROJECT_ID-deploy/${TAG_NAME}
+  - gs://$PROJECT_ID-deploy/live
+- # Tag nomulus
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/nomulus:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/nomulus:live
+- # Tag proxy
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/proxy:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/proxy:live
+- # Tag nomulus tool
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/nomulus-tool:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/nomulus-tool:live
+# Tag builder
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/builder:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/builder:live
+# Update db_object_updater
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/db_object_updater:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/db_object_updater:live
+# Update prober cert updater
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/prober_cert_updater:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/prober_cert_updater:live
+# Update schema verifier
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/schema_verifier:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/schema_verifier:live
+# Update schema deployer
+- name: 'gcr.io/$PROJECT_ID/builder:latest'
+  args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/schema_deployer:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/schema_deployer:live
+timeout: 3600s
+options:
+  machineType: 'E2_HIGHCPU_32'
