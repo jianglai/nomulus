@@ -25,6 +25,33 @@ steps:
   - -r
   - gs://$PROJECT_ID-deploy/${TAG_NAME}
   - gs://$PROJECT_ID-deploy/live
+- # Tag nomulus
+  - name: 'gcr.io/$PROJECT_ID/builder:latest'
+  - args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/nomulus:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/nomulus:live
+- # Tag proxy
+  - name: 'gcr.io/$PROJECT_ID/builder:latest'
+  - args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/proxy:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/proxy:live
+- # Tag nomulus tool
+  - name: 'gcr.io/$PROJECT_ID/builder:latest'
+  - args:
+  - gcloud
+  - container
+  - images
+  - add-tag
+  - gcr.io/$PROJECT_ID/nomulus-tool:${TAG_NAME}
+  - gcr.io/$PROJECT_ID/nomulus-tool:live
 # Tag builder
   - name: 'gcr.io/$PROJECT_ID/builder:latest'
   - args:

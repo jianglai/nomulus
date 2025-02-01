@@ -190,8 +190,6 @@ artifacts:
     - 'output/tag_name'
     - 'output/nomulus.jar'
     - 'output/schema.jar'
-    - 'release/cloudbuild-tag.yaml'
-    - 'release/cloudbuild-sync.yaml'
     - 'release/cloudbuild-sync-and-tag.yaml'
     - 'release/cloudbuild-deploy-*.yaml'
     - 'release/cloudbuild-delete-*.yaml'
