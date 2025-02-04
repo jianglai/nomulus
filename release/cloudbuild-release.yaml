@@ -235,6 +235,7 @@ steps:
   - -c
   - |
     set -e
+    rm -rf gcompute-tools
     cp -rf nomulus-release/.git .
     rm -rf nomulus-release
     git config --global user.name "Cloud Build"
