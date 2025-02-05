@@ -57,7 +57,7 @@ npm install -g n
 for i in {1..5}; do n 22.7.0 && break || sleep 15; done
 
 # Install gp_dump
-apt-get install postgresql-client-11 procps -y
+apt-get install postgresql-client-17 procps -y
 
 # Install gcloud
 apt-get install google-cloud-cli -y
