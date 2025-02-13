@@ -20,7 +20,7 @@ spec:
           name: http
         resources:
           requests:
-            cpu: "500m"
+            cpu: "50m"
         args: [ENVIRONMENT]
         env:
         - name: POD_ID
@@ -44,14 +44,14 @@ spec:
     kind: Deployment
     name: console
   minReplicas: 1
-  maxReplicas: 20
+  maxReplicas: 10
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 100
+          averageUtilization: 50
 ---
 apiVersion: v1
 kind: Service

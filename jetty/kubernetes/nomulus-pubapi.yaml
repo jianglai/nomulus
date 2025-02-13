@@ -20,7 +20,7 @@ spec:
           name: http
         resources:
           requests:
-            cpu: "500m"
+            cpu: "50m"
         args: [ENVIRONMENT]
         env:
         - name: POD_ID
@@ -44,7 +44,7 @@ spec:
           name: https-whois
         resources:
           requests:
-            cpu: "500m"
+            cpu: "50m"
         args: [ --env, PROXY_ENV, --log, --local ]
         env:
         - name: POD_ID
@@ -67,15 +67,15 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: pubapi
-  minReplicas: 1
-  maxReplicas: 20
+  minReplicas: 10
+  maxReplicas: 100
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 100
+          averageUtilization: 50
 ---
 apiVersion: v1
 kind: Service
