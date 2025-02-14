@@ -20,7 +20,7 @@ spec:
           name: http
         resources:
           requests:
-            cpu: "50m"
+            cpu: "500m"
         args: [ENVIRONMENT]
         env:
         - name: POD_ID
@@ -43,15 +43,15 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: backend
-  minReplicas: 5
-  maxReplicas: 100
+  minReplicas: 2
+  maxReplicas: 5
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 50
+          averageUtilization: 100
 ---
 apiVersion: v1
 kind: Service
