@@ -12,6 +12,8 @@ spec:
         service: pubapi
     spec:
       serviceAccountName: nomulus
+      nodeSelector:
+        cloud.google.com/compute-class: "Performance"
       containers:
       - name: pubapi
         image: gcr.io/GCP_PROJECT/nomulus
