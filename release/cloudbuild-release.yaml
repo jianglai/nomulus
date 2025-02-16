@@ -88,6 +88,7 @@ steps:
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-deploy.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-schema-verify.yaml
     sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-delete.yaml
+    sed -i s/builder:latest/builder@$builder_digest/g release/cloudbuild-restart-proxies.yaml
     sed -i s/GCP_PROJECT/${PROJECT_ID}/ proxy/kubernetes/proxy-*.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-sync-and-tag.yaml
     sed -i s/'$${TAG_NAME}'/${TAG_NAME}/g release/cloudbuild-deploy.yaml
@@ -99,6 +100,11 @@ steps:
         > release/cloudbuild-deploy-gke-${environment}.yaml
       sed s/'$${_ENV}'/${environment}/g release/cloudbuild-delete.yaml \
         > release/cloudbuild-delete-${environment}.yaml
+      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-restart-proxies.yaml \
+        > release/cloudbuild-restart-proxies-${environment}.yaml
+      sed s/'$${_ENV}'/${environment}/g release/cloudbuild-restart-proxies.yaml | \
+        sed s/proxy-deployment/proxy-deployment-canary/g \
+        > release/cloudbuild-restart-proxies-${environment}-canary.yaml
     done
 # Build and upload the schema_deployer image.
 - name: 'gcr.io/cloud-builders/docker'
@@ -178,11 +184,13 @@ steps:
       base_domain=$(grep baseDomain \
         ./core/src/main/java/google/registry/config/files/nomulus-config-${env}.yaml | \
         awk '{print $2}')
-      for service in frontend backend pubapi console 
+      for service in frontend backend pubapi console
       do
         # non-canary
         sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
-          sed s/ENVIRONMENT/${env}/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
+          sed s/ENVIRONMENT/${env}/g | \
+          sed s/PROXY_ENV/"${env}"/g | \
+          sed s/EPP/"epp"/g > ./jetty/kubernetes/nomulus-${env}-${service}.yaml
         # Proxy '--log' flag does not work on production.
         if [ ${env} == production ]
         then
@@ -196,6 +204,8 @@ steps:
         # canary
         sed s/GCP_PROJECT/${PROJECT_ID}/g ./jetty/kubernetes/nomulus-${service}.yaml | \
           sed s/ENVIRONMENT/${env}/g | \
+          sed s/PROXY_ENV/"${env}_canary"/g | \
+          sed s/EPP/"epp-canary"/g | \
           sed s/${service}/${service}-canary/g \
           > ./jetty/kubernetes/nomulus-${env}-${service}-canary.yaml
         # Proxy '--log' flag does not work on production.
@@ -264,7 +274,7 @@ steps:
       $(gcloud auth list --format='get(account)' --filter=active)
     git add .
     git commit -m "Release commit for tag ${TAG_NAME}"
-    git push -o nokeycheck origin master 
+    git push -o nokeycheck origin master
     git tag ${TAG_NAME}
     git push -o nokeycheck origin ${TAG_NAME}
 timeout: 3600s

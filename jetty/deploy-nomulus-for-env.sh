@@ -37,15 +37,19 @@ for service in frontend backend pubapi console
 do
   sed s/GCP_PROJECT/"${project}"/g "./kubernetes/nomulus-${service}.yaml" | \
   sed s/ENVIRONMENT/"${environment}"/g | \
+  sed s/PROXY_ENV/"${environment}"/g | \
+  sed s/EPP/"epp"/g | \
   kubectl apply -f -
+  kubectl rollout restart deployment/${service}
   # canary
   sed s/GCP_PROJECT/"${project}"/g "./kubernetes/nomulus-${service}.yaml" | \
   sed s/ENVIRONMENT/"${environment}"/g | \
+  sed s/PROXY_ENV/"${environment}_canary"/g | \
+  sed s/EPP/"epp-canary"/g | \
   sed s/"${service}"/"${service}-canary"/g | \
   kubectl apply -f -
+  kubectl rollout restart deployment/${service}-canary
 done
-# Kills all running pods, new pods created will be pulling the new image.
-kubectl delete pods --all
 kubectl apply -f "./kubernetes/gateway/nomulus-gateway.yaml"
 kubectl apply -f "./kubernetes/gateway/nomulus-iap-${environment}.yaml"
 for service in frontend backend console pubapi
@@ -57,4 +61,16 @@ do
   sed s/SERVICE/"${service}-canary"/g "./kubernetes/gateway/nomulus-backend-policy-${environment}.yaml" | \
   kubectl apply -f -
 done
+
+# Restart proxies
+while read line
+do
+  parts=(${line})
+  echo "Updating cluster ${parts[0]} in location ${parts[1]}..."
+  gcloud container clusters get-credentials ${parts[0]} \
+    --project ${project} --location ${parts[1]}
+  kubectl rollout restart deployment/proxy-deployment
+  kubectl rollout restart deployment/proxy-deployment-canary
+done < <(gcloud container clusters list --project ${project} | grep proxy-cluster)
+
 kubectl config use-context "$current_context"
