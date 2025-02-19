@@ -17,7 +17,7 @@ steps:
   args:
   - -c
   - |
-    for _env in tool alpha crash sandbox production
+    for _env in tool crash
     do
       release/build_nomulus_for_env.sh $${_env} output
     done
