@@ -23,7 +23,7 @@ import static google.registry.util.RandomStringGenerator.insecureRandomStringGen
 import static google.registry.util.StringGenerator.Alphabets.HEX_DIGITS_ONLY;
 
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableList;
 import com.google.monitoring.metrics.MetricReporter;
 import dagger.Lazy;
 import google.registry.request.RequestHandler;
@@ -54,7 +54,8 @@ public class RegistryServlet extends ServletBase {
   private static final Lazy<MetricReporter> metricReporter = component.metricReporter();
 
   // The names of the session cookies to log.
-  private static final ImmutableSet<String> COOKIES_TO_LOG = ImmutableSet.of("JSESSIONID", "GCLB");
+  private static final ImmutableList<String> COOKIES_TO_LOG =
+      ImmutableList.of("JSESSIONID", "GCLB");
 
   private final String projectId;
 
@@ -86,9 +87,25 @@ public class RegistryServlet extends ServletBase {
     if (maybeCookie.isPresent() && !maybeCookie.get().isEmpty()) {
       // GCLB sets the value with a leading and trailing double quote.
       String cookie = maybeCookie.get().replace("\"", "");
-      Splitter.on(';').trimResults().withKeyValueSeparator('=').split(cookie).entrySet().stream()
-          .filter(e -> COOKIES_TO_LOG.contains(e.getKey()))
-          .forEach(e -> setLabel(e.getKey(), e.getValue()));
+      Splitter.on(';')
+          .trimResults()
+          .splitToStream(cookie)
+          .filter(
+              s -> {
+                for (String cookieName : COOKIES_TO_LOG) {
+                  if (s.startsWith(cookieName + "=")) {
+                    return true;
+                  }
+                }
+                return false;
+              })
+          .forEach(
+              s -> {
+                int spliIndex = s.indexOf('=');
+                String key = s.substring(0, spliIndex);
+                String value = s.substring(spliIndex + 1);
+                setLabel(key, value);
+              });
     }
     try {
       super.service(req, rsp);
